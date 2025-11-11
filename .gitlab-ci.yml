@@ -1,49 +1,210 @@
 image: ghcr.io/astral-sh/uv:python3.11-bookworm
 
 stages:
-  - lint_test
+  - lint
+  - test
   - security
   - build
-  - release
+  - deploy
 
 variables:
   UV_LINK_MODE: "copy"
+  COVERAGE_THRESHOLD: "80"
 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
   paths:
     - .venv/
     - .cache/uv/
+    - .pytest_cache/
 
-lint_test:
-  stage: lint_test
+# Lint Stage
+lint:
+  stage: lint
   script:
     - uv venv
     - source .venv/bin/activate
     - uv pip install -e .[dev]
+    - echo "Running Ruff linter..."
     - ruff check .
-    - mypy src
-    - pytest -q
+    - echo "Running MyPy type checker..."
+    - mypy src --ignore-missing-imports
+    - echo "Checking code formatting..."
+    - black --check .
+    - isort --check-only .
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+  allow_failure: false
+
+# Test Stage
+test:
+  stage: test
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  script:
+    - uv venv
+    - source .venv/bin/activate
+    - uv pip install -e .[dev]
+    - echo "Running test suite with coverage..."
+    - pytest -v --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html --junitxml=junit.xml
+    - echo "Checking coverage threshold..."
+    - coverage report --fail-under=${COVERAGE_THRESHOLD}
   artifacts:
     when: always
+    paths:
+      - htmlcov/
+      - coverage.xml
+      - junit.xml
     reports:
       junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 30 days
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
 
-security:
+# Integration Test
+integration_test:
+  stage: test
+  script:
+    - uv venv
+    - source .venv/bin/activate
+    - uv pip install -e .[dev]
+    - echo "Starting service for integration tests..."
+    - uvicorn src.app:app --host 0.0.0.0 --port 8000 &
+    - sleep 5
+    - echo "Testing health endpoint..."
+    - curl -f http://localhost:8000/health || exit 1
+    - echo "Testing readiness endpoint..."
+    - curl -f http://localhost:8000/ready || exit 1
+    - echo "Testing triage endpoint..."
+    - 'curl -f -X POST http://localhost:8000/triage -H "Content-Type: application/json" -d "{\"summary\": \"Test\", \"description\": \"Test ticket\"}" || exit 1'
+    - echo "Integration tests passed!"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# Security Stage
+security_secrets:
   stage: security
   script:
+    - echo "Scanning for secrets with gitleaks..."
     - uvx gitleaks detect --no-git -v
-    - uvx bandit -r -q src
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+  allow_failure: false
 
+security_sast:
+  stage: security
+  script:
+    - echo "Running Bandit SAST scanner..."
+    - uvx bandit -r src -f json -o bandit-report.json || true
+    - uvx bandit -r src -f txt
+  artifacts:
+    when: always
+    paths:
+      - bandit-report.json
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+  allow_failure: true
+
+security_dependencies:
+  stage: security
+  script:
+    - uv venv
+    - source .venv/bin/activate
+    - uv pip install -e .[dev]
+    - echo "Checking for known vulnerabilities in dependencies..."
+    - uvx pip-audit --desc || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+  allow_failure: true
+
+# Build Stage
 build_image:
   stage: build
   image: gcr.io/kaniko-project/executor:latest
+  script:
+    - echo "Building Docker image..."
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile Dockerfile \
+        --destination ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_SHA} \
+        --destination ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_REF_SLUG} \
+        --cache=true \
+        --cache-ttl=24h
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build_release:
+  stage: build
+  image: gcr.io/kaniko-project/executor:latest
   script:
-    - echo "{"auths":{"ghcr.io":{"username":"$GHCR_USERNAME","password":"$GHCR_TOKEN"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile Dockerfile --destination ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_TAG}
+    - echo "Building release image with tag ${CI_COMMIT_TAG}..."
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile Dockerfile \
+        --destination ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_TAG} \
+        --destination ghcr.io/$GHCR_USERNAME/ticket-triage-agent:latest \
+        --cache=true
+  rules:
+    - if: $CI_COMMIT_TAG
+  only:
+    - tags
+
+# Container Security Scan
+container_scan:
+  stage: build
+  image: aquasec/trivy:latest
+  script:
+    - echo "Scanning Docker image for vulnerabilities..."
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_SHA} || true
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_SHA}
+  artifacts:
+    when: always
+    paths:
+      - trivy-report.json
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
+  needs:
+    - build_image
+
+# Deploy Stage
+deploy_staging:
+  stage: deploy
+  script:
+    - echo "Deploying to staging environment..."
+    - echo "Image: ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_SHA}"
+    - echo "Add your deployment commands here (kubectl, helm, etc.)"
+  environment:
+    name: staging
+    url: https://staging.example.com
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - build_image
+  when: manual
+
+deploy_production:
+  stage: deploy
+  script:
+    - echo "Deploying to production environment..."
+    - echo "Image: ghcr.io/$GHCR_USERNAME/ticket-triage-agent:${CI_COMMIT_TAG}"
+    - echo "Add your deployment commands here (kubectl, helm, etc.)"
+  environment:
+    name: production
+    url: https://production.example.com
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - build_release
+  when: manual

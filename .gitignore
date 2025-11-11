@@ -1,11 +1,69 @@
+# Python
 __pycache__/
-*.pyc
-.venv/
-.env
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
 dist/
-.build/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
+junit.xml
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Linting
+.ruff_cache/
+
+# IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# Models
+models/
+*.pkl
+
+# Logs
+*.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# CI/CD artifacts
+bandit-report.json
+trivy-report.json
