@@ -15,6 +15,7 @@ class TriageResponse:
     """Complete triage response with routing and reply."""
     queue: str
     confidence: float
+    needs_review: bool
     reply: str
     all_queues: dict[str, float]
     correlation_id: str | None = None
@@ -112,13 +113,15 @@ class TriageService:
 
             # Route ticket
             routing_result = self.router.predict(ticket_text)
+            needs_review = routing_result.confidence < self.settings.router_confidence_threshold
 
             logger.info(
                 f"Ticket routed to {routing_result.queue}",
                 extra={
                     "correlation_id": correlation_id,
                     "queue": routing_result.queue,
-                    "confidence": routing_result.confidence
+                    "confidence": routing_result.confidence,
+                    "needs_review": needs_review,
                 }
             )
 
@@ -137,6 +140,7 @@ class TriageService:
             return TriageResponse(
                 queue=routing_result.queue,
                 confidence=routing_result.confidence,
+                needs_review=needs_review,
                 reply=reply,
                 all_queues=routing_result.all_predictions,
                 correlation_id=correlation_id

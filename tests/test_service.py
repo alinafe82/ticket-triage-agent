@@ -26,6 +26,7 @@ class TestTriageService:
         assert isinstance(result, TriageResponse)
         assert result.queue is not None
         assert 0.0 <= result.confidence <= 1.0
+        assert isinstance(result.needs_review, bool)
         assert len(result.reply) > 0
         assert len(result.all_queues) > 0
 
@@ -92,3 +93,15 @@ class TestTriageService:
 
         for queue in available_queues:
             assert queue in result.all_queues
+
+    def test_triage_flags_low_confidence_for_review(self, mock_router, mock_llm):
+        """Test confidence threshold creates a human review signal."""
+        settings = Settings(llm_provider="mock", router_confidence_threshold=1.0)
+        service = TriageService(mock_router, mock_llm, settings)
+
+        result = service.triage_ticket(
+            summary="Ambiguous issue",
+            description="Something is slow somewhere",
+        )
+
+        assert result.needs_review is True

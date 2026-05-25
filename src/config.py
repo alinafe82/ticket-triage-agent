@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # API
     api_prefix: str = "/api/v1"
+    api_key: str = ""
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     cors_allow_credentials: bool = False
     expose_docs: bool = True
@@ -69,6 +70,7 @@ class JsonFormatter(logging.Formatter):
             "duration",
             "queue",
             "confidence",
+            "needs_review",
         ):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)

@@ -1,8 +1,10 @@
 """FastAPI application for ticket triage service."""
 import logging
+import secrets
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -93,6 +95,7 @@ class TriageResult(BaseModel):
     """Response model for ticket triage."""
     queue: str = Field(..., description="Assigned support queue")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Prediction confidence")
+    needs_review: bool = Field(..., description="Whether the prediction is below review threshold")
     reply: str = Field(..., description="Generated response message")
     all_queues: dict[str, float] = Field(
         ...,
@@ -113,6 +116,17 @@ class ErrorResponse(BaseModel):
     error: str
     detail: str | None = None
     correlation_id: str | None = None
+
+
+def require_api_key(x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None) -> None:
+    """Require an API key when one is configured."""
+    if not settings.api_key:
+        return
+    if not x_api_key or not secrets.compare_digest(x_api_key, settings.api_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+        )
 
 
 # Exception Handlers
@@ -218,7 +232,12 @@ async def readiness_check():
     )
 
 
-@app.get("/queues", response_model=list[str], tags=["Info"])
+@app.get(
+    "/queues",
+    response_model=list[str],
+    tags=["Info"],
+    dependencies=[Depends(require_api_key)],
+)
 async def list_queues():
     """
     List available ticket queues.
@@ -234,7 +253,12 @@ async def list_queues():
     return triage_service.get_available_queues()
 
 
-@app.post("/triage", response_model=TriageResult, tags=["Triage"])
+@app.post(
+    "/triage",
+    response_model=TriageResult,
+    tags=["Triage"],
+    dependencies=[Depends(require_api_key)],
+)
 async def triage_ticket(request: Request, ticket: TicketRequest):
     """
     Triage a support ticket.
@@ -278,6 +302,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         return TriageResult(
             queue=result.queue,
             confidence=result.confidence,
+            needs_review=result.needs_review,
             reply=result.reply,
             all_queues=result.all_queues,
             correlation_id=correlation_id

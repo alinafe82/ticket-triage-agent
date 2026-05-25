@@ -1,6 +1,8 @@
 """Tests for FastAPI endpoints."""
 from fastapi import status
 
+from src import app as app_module
+
 
 class TestHealthEndpoints:
     """Test cases for health check endpoints."""
@@ -64,6 +66,7 @@ class TestTriageEndpoint:
         data = response.json()
         assert "queue" in data
         assert "confidence" in data
+        assert "needs_review" in data
         assert "reply" in data
         assert "all_queues" in data
         assert 0.0 <= data["confidence"] <= 1.0
@@ -194,6 +197,20 @@ class TestTriageEndpoint:
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    def test_triage_requires_api_key_when_configured(self, client, monkeypatch):
+        """Test triage endpoint requires an API key only when configured."""
+        monkeypatch.setattr(app_module.settings, "api_key", "test-key")
+        ticket = {
+            "summary": "VPN issue",
+            "description": "VPN connection fails after password rotation",
+        }
+
+        missing_key = client.post("/triage", json=ticket)
+        valid_key = client.post("/triage", json=ticket, headers={"X-API-Key": "test-key"})
+
+        assert missing_key.status_code == status.HTTP_401_UNAUTHORIZED
+        assert valid_key.status_code == status.HTTP_200_OK
 
 
 class TestOpenAPIDocumentation:
