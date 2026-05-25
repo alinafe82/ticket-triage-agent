@@ -1,12 +1,11 @@
 """Business logic layer for ticket triage service."""
 import logging
-from typing import Optional
 from dataclasses import dataclass
 
-from .router import Router, RoutingResult
-from .llm import BaseLLM, get_llm
 from .config import Settings
 from .exceptions import TriageServiceException
+from .llm import BaseLLM, get_llm
+from .router import Router
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class TriageResponse:
     confidence: float
     reply: str
     all_queues: dict[str, float]
-    correlation_id: Optional[str] = None
+    correlation_id: str | None = None
 
 
 class TriageService:
@@ -44,7 +43,7 @@ class TriageService:
         logger.info("TriageService initialized")
 
     @classmethod
-    def create(cls, settings: Optional[Settings] = None) -> "TriageService":
+    def create(cls, settings: Settings | None = None) -> "TriageService":
         """
         Factory method to create service with default components.
 
@@ -82,7 +81,7 @@ class TriageService:
         self,
         summary: str,
         description: str,
-        correlation_id: Optional[str] = None
+        correlation_id: str | None = None
     ) -> TriageResponse:
         """
         Triage a ticket with ML routing and LLM response generation.

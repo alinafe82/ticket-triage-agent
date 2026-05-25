@@ -1,10 +1,61 @@
-# Ticket Triage Agent (Hybrid ML + LLM)
+# Ticket Triage Agent
 
-**uv-native + GitLab CI** demo combining deterministic ML routing with an LLM reply.
+Internal ticket triage API for routing support or platform tickets to the most likely queue.
 
-## Dev
+The service combines deterministic text routing with optional generated summaries. The routing
+path works locally with a small model and mock data; LLM providers are optional and isolated
+behind an interface.
+
+## Why It Exists
+
+Ticket queues are a common source of developer productivity drag. A useful triage tool should
+make first-pass routing faster while keeping enough confidence and explanation for humans to
+override it.
+
+## Quickstart
+
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e .[dev]
 uv run uvicorn src.app:app --reload
 ```
+
+Run tests and linting:
+
+```bash
+uv run --extra dev pytest
+uv run --extra dev ruff check .
+```
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/triage \
+  -H 'content-type: application/json' \
+  -d '{"summary":"Build cache misses on main","description":"CI jobs are slower after dependency updates"}'
+```
+
+## Architecture Overview
+
+- `src.app` exposes health, queue, and triage endpoints.
+- `src.router` owns deterministic queue prediction.
+- `src.service` coordinates validation, routing, and response shaping.
+- `src.llm` isolates optional provider-backed summary generation.
+
+See [docs/architecture.md](docs/architecture.md) for design details.
+
+## Limitations
+
+- Training data is local demo data.
+- The default LLM path is a mock provider.
+- It routes tickets; it does not file or mutate tickets in an external tracker.
+
+## Future Improvements
+
+- Add connectors for GitHub Issues, Jira, or an internal ticket system.
+- Persist feedback when humans override a route.
+- Track precision/recall by queue before using recommendations automatically.
+
+## Interview Notes
+
+See [docs/interview-notes.md](docs/interview-notes.md).

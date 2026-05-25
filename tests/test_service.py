@@ -1,9 +1,7 @@
 """Tests for service module."""
-import pytest
 
-from src.service import TriageService, TriageResponse
 from src.config import Settings
-from src.exceptions import TriageServiceException
+from src.service import TriageResponse, TriageService
 
 
 class TestTriageService:

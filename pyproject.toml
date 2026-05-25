@@ -1,7 +1,7 @@
 [project]
 name = "ticket-triage-agent"
 version = "0.2.0"
-description = "Production-grade AI agent service with hybrid ML + LLM routing"
+description = "Internal ticket triage API with deterministic routing and optional LLM summaries"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -32,7 +32,9 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-select = ["E","F","B","I","UP"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "UP"]
 ignore = ["E501"]
 
 [tool.mypy]

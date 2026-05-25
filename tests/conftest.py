@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 
 from src import app as app_module
 from src.config import Settings
-from src.router import Router
 from src.llm import MockLLM
+from src.router import Router
 from src.service import TriageService
 
 

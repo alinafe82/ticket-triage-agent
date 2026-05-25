@@ -1,10 +1,11 @@
 """Tests for ML router module."""
-import pytest
 import tempfile
 from pathlib import Path
 
+import pytest
+
+from src.exceptions import ModelNotTrainedException, RouterException
 from src.router import Router, RoutingResult
-from src.exceptions import RouterException, ModelNotTrainedException
 
 
 class TestRouter:

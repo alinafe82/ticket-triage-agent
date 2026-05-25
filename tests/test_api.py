@@ -1,5 +1,4 @@
 """Tests for FastAPI endpoints."""
-import pytest
 from fastapi import status
 
 
@@ -132,7 +131,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_missing_description(self, client):
         """Test triage fails with missing description."""
@@ -140,7 +139,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_empty_summary(self, client):
         """Test triage fails with empty summary."""
@@ -151,7 +150,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_empty_description(self, client):
         """Test triage fails with empty description."""
@@ -162,7 +161,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_summary_too_long(self, client):
         """Test triage fails with summary exceeding max length."""
@@ -173,7 +172,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_description_too_long(self, client):
         """Test triage fails with description exceeding max length."""
@@ -184,7 +183,7 @@ class TestTriageEndpoint:
 
         response = client.post("/triage", json=ticket)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_triage_invalid_json(self, client):
         """Test triage fails with invalid JSON."""
@@ -194,7 +193,7 @@ class TestTriageEndpoint:
             headers={"Content-Type": "application/json"}
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestOpenAPIDocumentation:

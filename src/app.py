@@ -1,22 +1,16 @@
 """FastAPI application for ticket triage service."""
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 from .config import get_settings, setup_logging
-from .service import TriageService, TriageResponse
-from .exceptions import (
-    TriageServiceException,
-    RouterException,
-    LLMException,
-    ValidationException
-)
+from .exceptions import TriageServiceException
 from .middleware import RequestLoggingMiddleware, setup_cors
+from .service import TriageService
 
 # Initialize settings and logging
 settings = get_settings()
@@ -24,7 +18,7 @@ setup_logging(settings)
 logger = logging.getLogger(__name__)
 
 # Global service instance
-triage_service: Optional[TriageService] = None
+triage_service: TriageService | None = None
 
 
 @asynccontextmanager
@@ -103,7 +97,7 @@ class TriageResult(BaseModel):
         ...,
         description="Confidence scores for all queues"
     )
-    correlation_id: Optional[str] = Field(None, description="Request correlation ID")
+    correlation_id: str | None = Field(None, description="Request correlation ID")
 
 
 class HealthResponse(BaseModel):
@@ -116,8 +110,8 @@ class HealthResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str
-    detail: Optional[str] = None
-    correlation_id: Optional[str] = None
+    detail: str | None = None
+    correlation_id: str | None = None
 
 
 # Exception Handlers
@@ -158,7 +152,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "error": "Validation error",
             "detail": exc.errors(),
@@ -287,7 +281,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
             correlation_id=correlation_id
         )
 
-    except TriageServiceException as e:
+    except TriageServiceException:
         # Re-raise to be handled by exception handler
         raise
 
@@ -300,7 +294,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Triage failed: {str(e)}"
-        )
+        ) from e
 
 
 @app.get("/", tags=["Info"])

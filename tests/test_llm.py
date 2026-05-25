@@ -1,9 +1,9 @@
 """Tests for LLM module."""
 import pytest
 
-from src.llm import MockLLM, get_llm
 from src.config import Settings
 from src.exceptions import LLMException
+from src.llm import MockLLM, get_llm
 
 
 class TestMockLLM:

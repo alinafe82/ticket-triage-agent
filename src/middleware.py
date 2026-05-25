@@ -1,8 +1,9 @@
 """Custom middleware for request processing."""
+import logging
 import time
 import uuid
-import logging
-from typing import Callable
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
