@@ -43,12 +43,16 @@ curl -X POST http://127.0.0.1:8000/triage \
 - `src.llm` isolates optional provider-backed summary generation.
 
 See [docs/architecture.md](docs/architecture.md) for design details.
+See [docs/runbook.md](docs/runbook.md), [docs/security-notes.md](docs/security-notes.md),
+and [docs/production-readiness.md](docs/production-readiness.md) for operational notes.
 
 ## Limitations
 
 - Training data is local demo data.
 - The default LLM path is a mock provider.
 - It routes tickets; it does not file or mutate tickets in an external tracker.
+- Production deployments should set explicit CORS origins, keep docs behind an internal
+  boundary, and load persisted model files only from trusted paths.
 
 ## Future Improvements
 

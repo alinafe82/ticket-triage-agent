@@ -11,9 +11,9 @@ The intended user is an internal developer productivity or platform support team
 
 ## Components
 
-- FastAPI app: request validation, health endpoints, and OpenAPI docs.
+- FastAPI app: request validation, health endpoints, and OpenAPI docs for non-production use.
 - Router: deterministic ML-style queue prediction over ticket text.
-- Service layer: coordinates routing, confidence checks, and response metadata.
+- Service layer: coordinates routing, reply generation, and response metadata.
 - LLM provider interface: optional summary/reply generation without coupling routing to a
   provider.
 
@@ -31,6 +31,9 @@ output is optional and should not own the final routing decision.
 The app separates API, service, router, and provider code so the routing model can evolve
 without rewriting endpoint behavior.
 
+Docs are disabled automatically when `ENVIRONMENT=production`. CORS defaults are local-only and
+do not allow browser credentials unless explicit origins are configured.
+
 ## What Is Not Built
 
 The repo does not integrate with a real ticket tracker, persist feedback, or train on private
@@ -47,6 +50,9 @@ ticket data.
 
 A production service should log correlation IDs, protect ticket content, measure routing
 quality, and keep humans in the loop for low-confidence decisions.
+
+Persisted router files use pickle, so they must be treated as trusted artifacts. A larger
+deployment should replace that with a safer model packaging format or signed artifact workflow.
 
 ## Testing Strategy
 

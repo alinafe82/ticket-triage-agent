@@ -24,6 +24,15 @@ need real labeled data, privacy review, and feedback loops.
 - Added architecture notes, ADR, and interview notes.
 - Verified the existing test suite: 50 tests pass locally.
 
+## Fixes Made During Productionization
+
+- Tightened CORS defaults and rejected wildcard origins with browser credentials.
+- Disabled public docs automatically when `ENVIRONMENT=production`.
+- Stopped request logging from writing ticket summary text.
+- Added provider-specific default model handling and valid JSON structured logs.
+- Documented pickle model-file risk and added production-readiness, security, runbook, and core
+  design ADR docs.
+
 ## Likely Questions
 
 **Why use deterministic routing instead of only an LLM?**
