@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from .config import get_settings, setup_logging
+from .config import get_settings, public_docs_enabled, setup_logging
 from .exceptions import TriageServiceException
 from .middleware import RequestLoggingMiddleware, setup_cors
 from .service import TriageService
@@ -16,6 +16,7 @@ from .service import TriageService
 settings = get_settings()
 setup_logging(settings)
 logger = logging.getLogger(__name__)
+docs_enabled = public_docs_enabled(settings)
 
 # Global service instance
 triage_service: TriageService | None = None
@@ -51,14 +52,14 @@ app = FastAPI(
     version=settings.app_version,
     description="Hybrid ML + LLM ticket routing and response generation service",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
 )
 
 # Add middleware
 app.add_middleware(RequestLoggingMiddleware)
-setup_cors(app, settings.cors_origins)
+setup_cors(app, settings.cors_origins, allow_credentials=settings.cors_allow_credentials)
 
 
 # Request/Response Models
@@ -262,7 +263,8 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         "Received triage request",
         extra={
             "correlation_id": correlation_id,
-            "summary": ticket.summary[:50]
+            "summary_length": len(ticket.summary),
+            "description_length": len(ticket.description),
         }
     )
 
@@ -304,6 +306,6 @@ async def root():
         "service": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment,
-        "docs": "/docs",
+        "docs": "/docs" if docs_enabled else None,
         "health": "/health"
     }

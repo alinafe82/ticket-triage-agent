@@ -177,6 +177,9 @@ class Router:
         """
         Load router model from disk.
 
+        Pickle can execute code during loading. Only load model files produced by this
+        service and stored in a trusted local path.
+
         Args:
             path: File path to load model from.
 
@@ -198,6 +201,9 @@ class Router:
 
             with open(model_path, 'rb') as f:
                 router = pickle.load(f)
+
+            if not isinstance(router, cls):
+                raise RouterException("Model file did not contain a Router instance")
 
             logger.info(f"Router model loaded from {path}")
             return router

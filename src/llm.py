@@ -100,7 +100,7 @@ class OpenAILLM(BaseLLM):
                 api_key=settings.llm_api_key,
                 timeout=self.timeout
             )
-            self.model = settings.llm_model
+            self.model = settings.llm_model or "gpt-4o-mini"
         except ImportError as e:
             raise LLMException(
                 "OpenAI package not installed",

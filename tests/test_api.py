@@ -189,7 +189,7 @@ class TestTriageEndpoint:
         """Test triage fails with invalid JSON."""
         response = client.post(
             "/triage",
-            data="invalid json",
+            content="invalid json",
             headers={"Content-Type": "application/json"}
         )
 
