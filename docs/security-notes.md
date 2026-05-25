@@ -9,6 +9,7 @@
 ## What It Protects Against
 
 - Oversized request payloads through Pydantic length validation.
+- Unauthenticated access to triage and queue endpoints when `API_KEY` is configured.
 - Wildcard CORS with browser credentials through explicit configuration rejection.
 - Public API docs exposure in production by disabling docs when `ENVIRONMENT=production`.
 - Ticket content leakage in request logs by logging lengths and correlation IDs instead of
@@ -17,7 +18,7 @@
 
 ## What It Does Not Protect Against
 
-- Unauthenticated public use. Authentication is not implemented.
+- Full identity-aware authorization. The API key gate is intentionally simple.
 - Prompt injection or data leakage if external LLM providers are enabled.
 - Unsafe pickle loading from untrusted model files.
 - Abuse from high request volume. Rate limiting is not implemented.
@@ -29,8 +30,9 @@
 uv run uvicorn src.app:app --reload
 ```
 
-Keep `LLM_PROVIDER=mock` unless you intentionally test a provider integration. Do not commit
-real API keys, private ticket text, customer names, or employer queue names.
+Keep `LLM_PROVIDER=mock` unless you intentionally test a provider integration. Set `API_KEY`
+before exposing `/triage` or `/queues` outside local development. Do not commit real API keys,
+private ticket text, customer names, or employer queue names.
 
 ## Known Limitations
 

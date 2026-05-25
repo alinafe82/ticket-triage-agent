@@ -11,7 +11,8 @@ The intended user is an internal developer productivity or platform support team
 
 ## Components
 
-- FastAPI app: request validation, health endpoints, and OpenAPI docs for non-production use.
+- FastAPI app: request validation, optional API key enforcement, health endpoints, and OpenAPI
+  docs for non-production use.
 - Router: deterministic ML-style queue prediction over ticket text.
 - Service layer: coordinates routing, reply generation, and response metadata.
 - LLM provider interface: optional summary/reply generation without coupling routing to a
@@ -19,9 +20,10 @@ The intended user is an internal developer productivity or platform support team
 
 ## Data Flow
 
-A caller submits a ticket summary and description. The API validates input, the service builds
-the routing text, the router scores queues, and the response includes the recommended queue,
-confidence, alternatives, and correlation metadata.
+A caller submits a ticket summary and description. The API validates input and checks the API
+key when one is configured. The service builds the routing text, the router scores queues, and
+the response includes the recommended queue, confidence, review flag, alternatives, and
+correlation metadata.
 
 ## Design Choices
 

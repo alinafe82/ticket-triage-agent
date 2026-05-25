@@ -23,6 +23,15 @@ curl -X POST http://127.0.0.1:8000/triage \
   -d '{"summary":"VPN issue","description":"VPN connection fails on Mac after password reset"}'
 ```
 
+If `API_KEY` is configured, include it on protected endpoints:
+
+```bash
+curl -X POST http://127.0.0.1:8000/triage \
+  -H 'content-type: application/json' \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"summary":"VPN issue","description":"VPN connection fails on Mac after password reset"}'
+```
+
 ## Test
 
 ```bash
@@ -37,6 +46,8 @@ uv run --extra dev ruff check .
   enabled without `LLM_API_KEY`.
 - CORS configuration error: do not combine `CORS_ORIGINS=["*"]` with
   `CORS_ALLOW_CREDENTIALS=true`.
+- 401 response: `API_KEY` is configured and the request is missing the matching `X-API-Key`
+  header.
 - 422 validation response: summary and description are required and length-limited.
 
 ## Troubleshooting

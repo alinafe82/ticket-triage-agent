@@ -5,6 +5,7 @@ Internal ticket triage API for routing support or platform tickets to the most l
 The service combines deterministic text routing with optional generated summaries. The routing
 path works locally with a small model and mock data; LLM providers are optional and isolated
 behind an interface.
+Protected endpoints can require an `X-API-Key` header when `API_KEY` is configured.
 
 ## Why It Exists
 
@@ -35,6 +36,8 @@ curl -X POST http://127.0.0.1:8000/triage \
   -d '{"summary":"Build cache misses on main","description":"CI jobs are slower after dependency updates"}'
 ```
 
+If `API_KEY` is set, include `-H "X-API-Key: $API_KEY"` on `/triage` and `/queues`.
+
 ## Architecture Overview
 
 - `src.app` exposes health, queue, and triage endpoints.
@@ -52,7 +55,7 @@ and [docs/production-readiness.md](docs/production-readiness.md) for operational
 - The default LLM path is a mock provider.
 - It routes tickets; it does not file or mutate tickets in an external tracker.
 - Production deployments should set explicit CORS origins, keep docs behind an internal
-  boundary, and load persisted model files only from trusted paths.
+  boundary, configure `API_KEY`, and load persisted model files only from trusted paths.
 
 ## Future Improvements
 

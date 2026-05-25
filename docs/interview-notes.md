@@ -29,6 +29,8 @@ need real labeled data, privacy review, and feedback loops.
 - Tightened CORS defaults and rejected wildcard origins with browser credentials.
 - Disabled public docs automatically when `ENVIRONMENT=production`.
 - Stopped request logging from writing ticket summary text.
+- Added optional API key protection for triage and queue endpoints.
+- Added `needs_review` when predictions fall below the configured confidence threshold.
 - Added provider-specific default model handling and valid JSON structured logs.
 - Documented pickle model-file risk and added production-readiness, security, runbook, and core
   design ADR docs.

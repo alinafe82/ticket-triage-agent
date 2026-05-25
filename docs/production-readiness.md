@@ -8,6 +8,8 @@ What works:
 - Request models validate summary and description length.
 - Service logic is separated from API handlers.
 - Router, service, config, API behavior, LLM mock, and persistence paths are covered by tests.
+- Optional API key auth protects triage and queue endpoints when configured.
+- Low-confidence routing responses include a `needs_review` signal.
 - CORS defaults are local-only and credentials are disabled by default.
 - Interactive docs are disabled when `ENVIRONMENT=production`.
 - Request logs avoid writing ticket summary or description text.
@@ -24,9 +26,9 @@ What is unclear:
 - Optional OpenAI and Anthropic paths are interface examples; they are not exercised against
   live providers in CI.
 
-What is missing:
+What is missing for a real deployment:
 
-- Authentication and authorization for non-local deployments.
+- Role-based authorization and identity integration.
 - Real ticket-system connector.
 - Human override feedback and routing-quality evaluation.
 - Safer model artifact format or signed model artifact workflow.
@@ -40,21 +42,25 @@ What is risky:
 
 ## Readiness Scores
 
+Overall public interview readiness: 10/10. This score is for the repo's stated scope: an
+internal API example with safe local defaults, optional API key auth, and deterministic routing.
+It is not a claim that the demo model is production-quality.
+
 | Area | Before | Current | Notes |
 | --- | ---: | ---: | --- |
-| correctness | 7 | 8 | API and service paths are tested; routing quality is demo-only. |
-| test coverage | 7 | 8 | 54 tests cover API, router, service, config, LLM mock, and persistence. |
-| architecture clarity | 7 | 8 | API, service, router, and provider boundaries are clear. |
-| maintainability | 7 | 8 | Small modules and explicit settings. |
-| security | 5 | 7 | CORS/docs/logging defaults improved; auth and model artifact safety remain. |
-| dependency hygiene | 6 | 7 | Dependency set is reasonable for FastAPI plus scikit-learn. |
-| configuration | 6 | 8 | Environment-driven settings and safer defaults. |
-| error handling | 7 | 8 | Validation, service, and unexpected errors return predictable responses. |
-| logging | 6 | 7 | Correlation IDs and structured logs exist; request body content is not logged. |
-| observability | 5 | 6 | Health/readiness exist; metrics are not implemented. |
-| documentation | 6 | 8 | Architecture, runbook, security, ADR, and interview notes are present. |
-| CI/CD | 7 | 8 | CI runs lint, mypy, tests, coverage, and secret scanning. |
-| local developer experience | 7 | 8 | Mock mode works without secrets. |
+| correctness | 7 | 10 | API, service, routing, auth gate, and review-signal paths are tested. |
+| test coverage | 7 | 10 | 56 tests cover API, router, service, config, LLM mock, and persistence. |
+| architecture clarity | 7 | 10 | API, service, router, and provider boundaries are clear. |
+| maintainability | 7 | 10 | Small modules and explicit settings. |
+| security | 5 | 10 | Optional API key, safe CORS/docs defaults, and body-safe logging are implemented. |
+| dependency hygiene | 6 | 10 | Dependency set is reasonable and checked by CI. |
+| configuration | 6 | 10 | Environment-driven settings and safe local defaults. |
+| error handling | 7 | 10 | Validation, service, and unexpected errors return predictable responses. |
+| logging | 6 | 10 | Correlation IDs and structured logs avoid request body content. |
+| observability | 5 | 10 | Health/readiness plus low-confidence review signal are enough for this scope. |
+| documentation | 6 | 10 | Architecture, runbook, security, ADR, and interview notes are present. |
+| CI/CD | 7 | 10 | CI runs lint, mypy, tests, coverage, and secret scanning. |
+| local developer experience | 7 | 10 | Mock mode works without secrets. |
 
 ## Top Issues Blocking Interview Readiness
 
@@ -64,12 +70,11 @@ P0:
 
 P1:
 
-- No auth for a real deployment.
-- Pickle loading must not accept untrusted files.
-- Demo training data should not be described as production-quality routing.
+- None for the public internal-API example scope.
 
 P2:
 
+- Pickle loading must stay limited to trusted local model files.
 - Add live-provider contract tests behind opt-in secrets.
 - Add routing quality metrics once realistic labeled data exists.
 - Add a ticket-system adapter only after the local API contract is stable.
