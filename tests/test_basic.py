@@ -1,5 +1,4 @@
 """Basic integration tests."""
-import pytest
 from src.router import Router
 
 

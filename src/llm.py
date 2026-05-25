@@ -1,9 +1,9 @@
 """LLM interface for generating ticket responses."""
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional
-from .exceptions import LLMException
+
 from .config import Settings
+from .exceptions import LLMException
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ class OpenAILLM(BaseLLM):
                 api_key=settings.llm_api_key,
                 timeout=self.timeout
             )
-            self.model = settings.llm_model
+            self.model = settings.llm_model or "gpt-4o-mini"
         except ImportError as e:
             raise LLMException(
                 "OpenAI package not installed",
@@ -178,7 +178,7 @@ class AnthropicLLM(BaseLLM):
             raise LLMException(f"Anthropic API error: {e}") from e
 
 
-def get_llm(settings: Optional[Settings] = None) -> BaseLLM:
+def get_llm(settings: Settings | None = None) -> BaseLLM:
     """
     Factory function to get appropriate LLM instance.
 

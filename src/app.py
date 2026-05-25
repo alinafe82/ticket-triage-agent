@@ -1,30 +1,27 @@
 """FastAPI application for ticket triage service."""
 import logging
+import secrets
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Annotated
 
-from fastapi import FastAPI, Request, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 
-from .config import get_settings, setup_logging
-from .service import TriageService, TriageResponse
-from .exceptions import (
-    TriageServiceException,
-    RouterException,
-    LLMException,
-    ValidationException
-)
+from .config import get_settings, public_docs_enabled, setup_logging
+from .exceptions import TriageServiceException
 from .middleware import RequestLoggingMiddleware, setup_cors
+from .service import TriageService
 
 # Initialize settings and logging
 settings = get_settings()
 setup_logging(settings)
 logger = logging.getLogger(__name__)
+docs_enabled = public_docs_enabled(settings)
 
 # Global service instance
-triage_service: Optional[TriageService] = None
+triage_service: TriageService | None = None
 
 
 @asynccontextmanager
@@ -57,14 +54,14 @@ app = FastAPI(
     version=settings.app_version,
     description="Hybrid ML + LLM ticket routing and response generation service",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
 )
 
 # Add middleware
 app.add_middleware(RequestLoggingMiddleware)
-setup_cors(app, settings.cors_origins)
+setup_cors(app, settings.cors_origins, allow_credentials=settings.cors_allow_credentials)
 
 
 # Request/Response Models
@@ -98,12 +95,13 @@ class TriageResult(BaseModel):
     """Response model for ticket triage."""
     queue: str = Field(..., description="Assigned support queue")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Prediction confidence")
+    needs_review: bool = Field(..., description="Whether the prediction is below review threshold")
     reply: str = Field(..., description="Generated response message")
     all_queues: dict[str, float] = Field(
         ...,
         description="Confidence scores for all queues"
     )
-    correlation_id: Optional[str] = Field(None, description="Request correlation ID")
+    correlation_id: str | None = Field(None, description="Request correlation ID")
 
 
 class HealthResponse(BaseModel):
@@ -116,8 +114,19 @@ class HealthResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str
-    detail: Optional[str] = None
-    correlation_id: Optional[str] = None
+    detail: str | None = None
+    correlation_id: str | None = None
+
+
+def require_api_key(x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None) -> None:
+    """Require an API key when one is configured."""
+    if not settings.api_key:
+        return
+    if not x_api_key or not secrets.compare_digest(x_api_key, settings.api_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+        )
 
 
 # Exception Handlers
@@ -158,7 +167,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "error": "Validation error",
             "detail": exc.errors(),
@@ -223,7 +232,12 @@ async def readiness_check():
     )
 
 
-@app.get("/queues", response_model=list[str], tags=["Info"])
+@app.get(
+    "/queues",
+    response_model=list[str],
+    tags=["Info"],
+    dependencies=[Depends(require_api_key)],
+)
 async def list_queues():
     """
     List available ticket queues.
@@ -239,7 +253,12 @@ async def list_queues():
     return triage_service.get_available_queues()
 
 
-@app.post("/triage", response_model=TriageResult, tags=["Triage"])
+@app.post(
+    "/triage",
+    response_model=TriageResult,
+    tags=["Triage"],
+    dependencies=[Depends(require_api_key)],
+)
 async def triage_ticket(request: Request, ticket: TicketRequest):
     """
     Triage a support ticket.
@@ -268,7 +287,8 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         "Received triage request",
         extra={
             "correlation_id": correlation_id,
-            "summary": ticket.summary[:50]
+            "summary_length": len(ticket.summary),
+            "description_length": len(ticket.description),
         }
     )
 
@@ -282,12 +302,13 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         return TriageResult(
             queue=result.queue,
             confidence=result.confidence,
+            needs_review=result.needs_review,
             reply=result.reply,
             all_queues=result.all_queues,
             correlation_id=correlation_id
         )
 
-    except TriageServiceException as e:
+    except TriageServiceException:
         # Re-raise to be handled by exception handler
         raise
 
@@ -300,7 +321,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Triage failed: {str(e)}"
-        )
+        ) from e
 
 
 @app.get("/", tags=["Info"])
@@ -310,6 +331,6 @@ async def root():
         "service": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment,
-        "docs": "/docs",
+        "docs": "/docs" if docs_enabled else None,
         "health": "/health"
     }

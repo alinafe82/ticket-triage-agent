@@ -1,10 +1,9 @@
 """Application configuration management."""
-from pydantic_settings import BaseSettings
-from functools import lru_cache
+import json
 import logging
+from functools import lru_cache
 
-
-from pydantic import ConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -23,12 +22,15 @@ class Settings(BaseSettings):
 
     # API
     api_prefix: str = "/api/v1"
-    cors_origins: list[str] = ["*"]
+    api_key: str = ""
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    cors_allow_credentials: bool = False
+    expose_docs: bool = True
 
     # LLM
     llm_provider: str = "mock"  # mock, openai, anthropic
     llm_api_key: str = ""
-    llm_model: str = "gpt-3.5-turbo"
+    llm_model: str = ""
     llm_timeout: int = 30
     llm_max_retries: int = 3
 
@@ -43,22 +45,66 @@ class Settings(BaseSettings):
     # Monitoring
     enable_metrics: bool = True
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False
     )
 
 
-@lru_cache()
+class JsonFormatter(logging.Formatter):
+    """Small JSON formatter for local structured logs."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "time": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        for key in (
+            "correlation_id",
+            "method",
+            "path",
+            "status_code",
+            "duration",
+            "queue",
+            "confidence",
+            "needs_review",
+        ):
+            if hasattr(record, key):
+                payload[key] = getattr(record, key)
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
 
 
+def public_docs_enabled(settings: Settings) -> bool:
+    """Return whether interactive API docs should be publicly exposed."""
+    production_envs = {"prod", "production"}
+    return settings.expose_docs and settings.environment.lower() not in production_envs
+
+
 def setup_logging(settings: Settings) -> None:
     """Configure application logging."""
+    if settings.log_format == "json":
+        handler = logging.StreamHandler()
+        handler.setFormatter(JsonFormatter())
+        logging.basicConfig(
+            level=getattr(logging, settings.log_level.upper()),
+            handlers=[handler],
+            force=True,
+        )
+        return
+
     logging.basicConfig(
         level=getattr(logging, settings.log_level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,
     )

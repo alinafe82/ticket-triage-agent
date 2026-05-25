@@ -1,8 +1,9 @@
 """Custom middleware for request processing."""
+import logging
 import time
 import uuid
-import logging
-from typing import Callable
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
@@ -67,12 +68,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
-def setup_cors(app, origins: list[str]) -> None:
+def setup_cors(app, origins: list[str], allow_credentials: bool = False) -> None:
     """Configure CORS middleware."""
+    if allow_credentials and "*" in origins:
+        raise ValueError("CORS cannot allow credentials with a wildcard origin")
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_credentials=True,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

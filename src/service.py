@@ -1,12 +1,11 @@
 """Business logic layer for ticket triage service."""
 import logging
-from typing import Optional
 from dataclasses import dataclass
 
-from .router import Router, RoutingResult
-from .llm import BaseLLM, get_llm
 from .config import Settings
 from .exceptions import TriageServiceException
+from .llm import BaseLLM, get_llm
+from .router import Router
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +15,10 @@ class TriageResponse:
     """Complete triage response with routing and reply."""
     queue: str
     confidence: float
+    needs_review: bool
     reply: str
     all_queues: dict[str, float]
-    correlation_id: Optional[str] = None
+    correlation_id: str | None = None
 
 
 class TriageService:
@@ -44,7 +44,7 @@ class TriageService:
         logger.info("TriageService initialized")
 
     @classmethod
-    def create(cls, settings: Optional[Settings] = None) -> "TriageService":
+    def create(cls, settings: Settings | None = None) -> "TriageService":
         """
         Factory method to create service with default components.
 
@@ -82,7 +82,7 @@ class TriageService:
         self,
         summary: str,
         description: str,
-        correlation_id: Optional[str] = None
+        correlation_id: str | None = None
     ) -> TriageResponse:
         """
         Triage a ticket with ML routing and LLM response generation.
@@ -113,13 +113,15 @@ class TriageService:
 
             # Route ticket
             routing_result = self.router.predict(ticket_text)
+            needs_review = routing_result.confidence < self.settings.router_confidence_threshold
 
             logger.info(
                 f"Ticket routed to {routing_result.queue}",
                 extra={
                     "correlation_id": correlation_id,
                     "queue": routing_result.queue,
-                    "confidence": routing_result.confidence
+                    "confidence": routing_result.confidence,
+                    "needs_review": needs_review,
                 }
             )
 
@@ -138,6 +140,7 @@ class TriageService:
             return TriageResponse(
                 queue=routing_result.queue,
                 confidence=routing_result.confidence,
+                needs_review=needs_review,
                 reply=reply,
                 all_queues=routing_result.all_predictions,
                 correlation_id=correlation_id

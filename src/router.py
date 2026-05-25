@@ -1,15 +1,14 @@
 """ML-based ticket routing using scikit-learn."""
-import pickle
 import logging
-from pathlib import Path
-from typing import Tuple, List, Optional
+import pickle
 from dataclasses import dataclass
+from pathlib import Path
 
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-import numpy as np
 
-from .exceptions import RouterException, ModelNotTrainedException
+from .exceptions import ModelNotTrainedException, RouterException
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +27,10 @@ class Router:
 
     vec: TfidfVectorizer
     clf: LogisticRegression
-    labels: List[str]
+    labels: list[str]
 
     @classmethod
-    def bootstrap(cls, training_data: Optional[List[Tuple[str, str]]] = None) -> "Router":
+    def bootstrap(cls, training_data: list[tuple[str, str]] | None = None) -> "Router":
         """
         Bootstrap router with training data.
 
@@ -54,7 +53,7 @@ class Router:
                     details={"required": 2, "provided": len(training_data)}
                 )
 
-            texts, labels = zip(*training_data)
+            texts, labels = zip(*training_data, strict=False)
             unique_labels = list(set(labels))
 
             logger.info(
@@ -81,7 +80,7 @@ class Router:
             raise RouterException(f"Training failed: {e}") from e
 
     @staticmethod
-    def _get_default_training_data() -> List[Tuple[str, str]]:
+    def _get_default_training_data() -> list[tuple[str, str]]:
         """Get default training data for bootstrapping."""
         return [
             ("Password reset failing repeatedly", "IT-Helpdesk"),
@@ -127,7 +126,7 @@ class Router:
             # Get all predictions
             all_predictions = {
                 label: float(prob)
-                for label, prob in zip(self.clf.classes_, proba)
+                for label, prob in zip(self.clf.classes_, proba, strict=False)
             }
 
             # Get best prediction
@@ -178,6 +177,9 @@ class Router:
         """
         Load router model from disk.
 
+        Pickle can execute code during loading. Only load model files produced by this
+        service and stored in a trusted local path.
+
         Args:
             path: File path to load model from.
 
@@ -199,6 +201,9 @@ class Router:
 
             with open(model_path, 'rb') as f:
                 router = pickle.load(f)
+
+            if not isinstance(router, cls):
+                raise RouterException("Model file did not contain a Router instance")
 
             logger.info(f"Router model loaded from {path}")
             return router
