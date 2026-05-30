@@ -111,6 +111,15 @@ class HealthResponse(BaseModel):
     environment: str
 
 
+class RootResponse(BaseModel):
+    """Service metadata response."""
+    service: str
+    version: str
+    environment: str
+    docs: str | None
+    health: str
+
+
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str
@@ -199,7 +208,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # API Endpoints
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
+async def health_check() -> HealthResponse:
     """
     Health check endpoint.
 
@@ -213,7 +222,7 @@ async def health_check():
 
 
 @app.get("/ready", response_model=HealthResponse, tags=["Health"])
-async def readiness_check():
+async def readiness_check() -> HealthResponse:
     """
     Readiness check endpoint.
 
@@ -238,7 +247,7 @@ async def readiness_check():
     tags=["Info"],
     dependencies=[Depends(require_api_key)],
 )
-async def list_queues():
+async def list_queues() -> list[str]:
     """
     List available ticket queues.
 
@@ -259,7 +268,7 @@ async def list_queues():
     tags=["Triage"],
     dependencies=[Depends(require_api_key)],
 )
-async def triage_ticket(request: Request, ticket: TicketRequest):
+async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult:
     """
     Triage a support ticket.
 
@@ -324,13 +333,13 @@ async def triage_ticket(request: Request, ticket: TicketRequest):
         ) from e
 
 
-@app.get("/", tags=["Info"])
-async def root():
+@app.get("/", response_model=RootResponse, tags=["Info"])
+async def root() -> RootResponse:
     """Root endpoint with service information."""
-    return {
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "environment": settings.environment,
-        "docs": "/docs" if docs_enabled else None,
-        "health": "/health"
-    }
+    return RootResponse(
+        service=settings.app_name,
+        version=settings.app_version,
+        environment=settings.environment,
+        docs="/docs" if docs_enabled else None,
+        health="/health",
+    )
