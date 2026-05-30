@@ -67,3 +67,6 @@ Thumbs.db
 # CI/CD artifacts
 bandit-report.json
 trivy-report.json
+
+# Local architecture-agent context. Do not publish.
+.specs/
