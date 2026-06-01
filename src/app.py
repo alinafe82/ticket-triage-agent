@@ -327,9 +327,11 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
             extra={"correlation_id": correlation_id},
             exc_info=True
         )
+        # Do not leak exception detail to the client. The correlation_id is
+        # already logged above and lets an operator find the full stack.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Triage failed: {str(e)}"
+            detail="Triage failed"
         ) from e
 
 
