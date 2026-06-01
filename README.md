@@ -7,12 +7,14 @@ This repo is internal-platform tooling, not a chatbot. The point is to remove th
 ## What the service is actually doing
 
 1. Receive a ticket payload (summary + description).
-2. Run a deterministic router over the text. The router returns a queue and a confidence score.
-3. If confidence is below the threshold, mark the response `needs_review` so a human handles it. Do not auto-route.
-4. Optionally generate a short LLM summary of the ticket. The summary is **decoration**: removing it does not change the routing decision.
-5. Return queue, confidence, optional summary, and a correlation ID.
+2. Run a deterministic router over the text. The router returns a queue and a confidence score in [0, 1].
+3. If `confidence < router_confidence_threshold` (default `0.5`, configurable in `src.config`), mark the response `needs_review` so a human handles it. The routing decision is still returned, but with the flag set.
+4. Call the LLM provider to generate a short summary of the ticket. This is currently in the request path: if the provider is configured and fails, the request returns 500. The mock provider is the default and never fails.
+5. Return queue, confidence, summary, `needs_review`, and a correlation ID.
 
-Step 3 is the part that makes this useful in practice. Wrong-confidence-1.0 is what destroys trust in an automation tool. The threshold is configurable; the default refuses to route when the top class is within 10% of the runner-up.
+Step 3 is the part that makes this useful in practice. Wrong-confidence-1.0 is what destroys trust in an automation tool. The threshold is a flat floor over the top-class confidence, not a margin between the top two classes.
+
+The LLM step is not currently optional in the same way the deterministic routing is. The right next change is to make it best-effort: the routing decision is returned regardless of provider failures, and the summary is null on failure. That belongs to a follow-up PR.
 
 ## Quickstart
 
@@ -56,7 +58,7 @@ Three reasons this repo leads with deterministic routing instead of an LLM call:
 - Latency. The deterministic path returns in single-digit milliseconds. An LLM call does not.
 - The cases where LLMs are wrong tend to be confidently wrong. The deterministic router is wrong too, but it knows when it is uncertain, which is what `needs_review` is built on.
 
-The LLM is still useful, just not for the routing decision itself. It is for the summary that a human reads before clicking "approve" or "reroute".
+The LLM is still useful, just not for the routing decision itself. It is for the summary that a human reads before clicking "approve" or "reroute". The summary's failure mode is currently coupled to the response — see "What the service is actually doing" above.
 
 ## What the tests prove
 
