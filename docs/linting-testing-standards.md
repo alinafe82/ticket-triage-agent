@@ -6,7 +6,7 @@ languages touched by the change.
 ## Required Gates
 
 - Start from the default branch and keep the PR focused on one reviewable change.
-- Run `git diff --check` before committing.
+- Run `git diff --check` and `git diff --cached --check` before committing.
 - Run `repowave scan .` when `repowave.toml` is present.
 - Run every applicable language command below. If a command needs credentials, a live service, or unavailable
   platform tooling, state that in the PR and run the closest local gate.
@@ -21,8 +21,8 @@ languages touched by the change.
 
 ## Current Command Map
 
-- Install: `uv sync`.
-- Lint: `make lint`.
-- Tests: `make test` or `make test-v` when debugging.
-- Coverage: `make test-cov` or `make coverage`.
-- Local automation gate: `make pre-commit-run` when pre-commit hooks change.
+- Install: `uv sync --extra dev --locked`.
+- Lint: `uv run ruff check .` and `uv run mypy src`.
+- Tests: `uv run make test` or `uv run make test-v` when debugging.
+- Coverage: `uv run make test-cov`; use `make coverage` only to open an already generated report.
+- Local automation gate: `uv run make pre-commit-run` when pre-commit hooks change.
