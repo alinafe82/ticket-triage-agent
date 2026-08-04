@@ -4,7 +4,6 @@ import pickle
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -130,7 +129,7 @@ class Router:
             }
 
             # Get best prediction
-            idx = int(np.argmax(proba))
+            idx = int(proba.argmax())
             best_label = self.clf.classes_[idx]
             best_confidence = float(proba[idx])
 
