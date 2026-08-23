@@ -1,4 +1,5 @@
 """Basic integration tests."""
+
 from src.router import Router
 
 

@@ -1,4 +1,5 @@
 """Tests for LLM module."""
+
 import pytest
 
 from src.config import Settings

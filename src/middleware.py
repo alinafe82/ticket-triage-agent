@@ -1,4 +1,5 @@
 """Custom middleware for request processing."""
+
 import logging
 import time
 import uuid
@@ -28,8 +29,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "correlation_id": correlation_id,
                 "method": request.method,
                 "path": request.url.path,
-                "client": request.client.host if request.client else "unknown"
-            }
+                "client": request.client.host if request.client else "unknown",
+            },
         )
 
         try:
@@ -48,8 +49,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 extra={
                     "correlation_id": correlation_id,
                     "status_code": response.status_code,
-                    "duration": duration
-                }
+                    "duration": duration,
+                },
             )
 
             return response
@@ -58,12 +59,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             duration = time.time() - start_time
             logger.error(
                 "Request failed",
-                extra={
-                    "correlation_id": correlation_id,
-                    "error": str(e),
-                    "duration": duration
-                },
-                exc_info=True
+                extra={"correlation_id": correlation_id, "error": str(e), "duration": duration},
+                exc_info=True,
             )
             raise
 

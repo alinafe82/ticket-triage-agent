@@ -1,4 +1,5 @@
 """ML-based ticket routing using scikit-learn."""
+
 import logging
 import pickle
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RoutingResult:
     """Result of ticket routing prediction."""
+
     queue: str
     confidence: float
     all_predictions: dict[str, float]
@@ -49,7 +51,7 @@ class Router:
             if len(training_data) < 2:
                 raise RouterException(
                     "Insufficient training data",
-                    details={"required": 2, "provided": len(training_data)}
+                    details={"required": 2, "provided": len(training_data)},
                 )
 
             if any(not text.strip() for text, _label in training_data):
@@ -71,11 +73,7 @@ class Router:
             vec = TfidfVectorizer(max_features=1000, ngram_range=(1, 2))
             X = vec.fit_transform(texts)
 
-            clf = LogisticRegression(
-                max_iter=200,
-                class_weight='balanced',
-                random_state=42
-            )
+            clf = LogisticRegression(max_iter=200, class_weight="balanced", random_state=42)
             clf.fit(X, labels)
 
             logger.info("Router training completed successfully")
@@ -131,8 +129,7 @@ class Router:
 
             # Get all predictions
             all_predictions = {
-                label: float(prob)
-                for label, prob in zip(self.clf.classes_, proba, strict=False)
+                label: float(prob) for label, prob in zip(self.clf.classes_, proba, strict=False)
             }
 
             # Get best prediction
@@ -140,15 +137,10 @@ class Router:
             best_label = self.clf.classes_[idx]
             best_confidence = float(proba[idx])
 
-            logger.debug(
-                f"Predicted queue: {best_label} "
-                f"(confidence: {best_confidence:.2%})"
-            )
+            logger.debug(f"Predicted queue: {best_label} (confidence: {best_confidence:.2%})")
 
             return RoutingResult(
-                queue=best_label,
-                confidence=best_confidence,
-                all_predictions=all_predictions
+                queue=best_label, confidence=best_confidence, all_predictions=all_predictions
             )
 
         except Exception as e:
@@ -169,7 +161,7 @@ class Router:
             model_path = Path(path)
             model_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(model_path, 'wb') as f:
+            with open(model_path, "wb") as f:
                 pickle.dump(self, f)
 
             logger.info(f"Router model saved to {path}")
@@ -201,11 +193,10 @@ class Router:
 
             if not model_path.exists():
                 raise ModelNotTrainedException(
-                    f"Model not found at {path}",
-                    details={"path": str(model_path.absolute())}
+                    f"Model not found at {path}", details={"path": str(model_path.absolute())}
                 )
 
-            with open(model_path, 'rb') as f:
+            with open(model_path, "rb") as f:
                 router = pickle.load(f)
 
             if not isinstance(router, cls):

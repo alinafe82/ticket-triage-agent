@@ -1,4 +1,5 @@
 """Application configuration management."""
+
 import json
 import logging
 from functools import lru_cache
@@ -46,9 +47,7 @@ class Settings(BaseSettings):
     enable_metrics: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
 

@@ -1,4 +1,5 @@
 """LLM interface for generating ticket responses."""
+
 import logging
 from abc import ABC, abstractmethod
 
@@ -39,10 +40,7 @@ class BaseLLM(ABC):
             raise LLMException("Empty prompt provided")
 
         if len(prompt) > 10000:
-            raise LLMException(
-                "Prompt too long",
-                details={"length": len(prompt), "max": 10000}
-            )
+            raise LLMException("Prompt too long", details={"length": len(prompt), "max": 10000})
 
 
 class MockLLM(BaseLLM):
@@ -89,22 +87,16 @@ class OpenAILLM(BaseLLM):
     def __init__(self, settings: Settings):
         super().__init__(settings)
         if not settings.llm_api_key:
-            raise LLMException(
-                "OpenAI API key not configured",
-                details={"provider": "openai"}
-            )
+            raise LLMException("OpenAI API key not configured", details={"provider": "openai"})
 
         try:
             import openai
-            self.client = openai.OpenAI(
-                api_key=settings.llm_api_key,
-                timeout=self.timeout
-            )
+
+            self.client = openai.OpenAI(api_key=settings.llm_api_key, timeout=self.timeout)
             self.model = settings.llm_model or "gpt-4o-mini"
         except ImportError as e:
             raise LLMException(
-                "OpenAI package not installed",
-                details={"install": "pip install openai"}
+                "OpenAI package not installed", details={"install": "pip install openai"}
             ) from e
 
     def complete(self, prompt: str, max_tokens: int = 500) -> str:
@@ -118,7 +110,7 @@ class OpenAILLM(BaseLLM):
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
-                temperature=0.7
+                temperature=0.7,
             )
 
             result = response.choices[0].message.content
@@ -138,21 +130,17 @@ class AnthropicLLM(BaseLLM):
         super().__init__(settings)
         if not settings.llm_api_key:
             raise LLMException(
-                "Anthropic API key not configured",
-                details={"provider": "anthropic"}
+                "Anthropic API key not configured", details={"provider": "anthropic"}
             )
 
         try:
             import anthropic
-            self.client = anthropic.Anthropic(
-                api_key=settings.llm_api_key,
-                timeout=self.timeout
-            )
+
+            self.client = anthropic.Anthropic(api_key=settings.llm_api_key, timeout=self.timeout)
             self.model = settings.llm_model or "claude-3-haiku-20240307"
         except ImportError as e:
             raise LLMException(
-                "Anthropic package not installed",
-                details={"install": "pip install anthropic"}
+                "Anthropic package not installed", details={"install": "pip install anthropic"}
             ) from e
 
     def complete(self, prompt: str, max_tokens: int = 500) -> str:
@@ -165,7 +153,7 @@ class AnthropicLLM(BaseLLM):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             result = response.content[0].text
@@ -193,6 +181,7 @@ def get_llm(settings: Settings | None = None) -> BaseLLM:
     """
     if settings is None:
         from .config import get_settings
+
         settings = get_settings()
 
     provider = settings.llm_provider.lower()
@@ -208,8 +197,5 @@ def get_llm(settings: Settings | None = None) -> BaseLLM:
     else:
         raise LLMException(
             f"Unknown LLM provider: {provider}",
-            details={
-                "provider": provider,
-                "supported": ["mock", "openai", "anthropic"]
-            }
+            details={"provider": provider, "supported": ["mock", "openai", "anthropic"]},
         )

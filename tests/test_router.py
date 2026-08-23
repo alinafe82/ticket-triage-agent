@@ -1,4 +1,5 @@
 """Tests for ML router module."""
+
 import tempfile
 from pathlib import Path
 
@@ -50,9 +51,9 @@ class TestRouter:
     @pytest.mark.parametrize(
         "training_data, message",
         [
-            ([('Valid text', 'Queue-A'), ('   ', 'Queue-B')], "blank text"),
-            ([('First text', 'Queue-A'), ('Second text', '   ')], "blank label"),
-            ([('First text', 'Queue-A'), ('Second text', 'Queue-A')], "two queues"),
+            ([("Valid text", "Queue-A"), ("   ", "Queue-B")], "blank text"),
+            ([("First text", "Queue-A"), ("Second text", "   ")], "blank label"),
+            ([("First text", "Queue-A"), ("Second text", "Queue-A")], "two queues"),
         ],
     )
     def test_bootstrap_rejects_ambiguous_training_data(self, training_data, message):
@@ -152,9 +153,7 @@ class TestRouter:
         router = Router.bootstrap()
 
         # High confidence prediction
-        result = router.predict(
-            "Cannot login with Okta MFA password reset failing repeatedly"
-        )
+        result = router.predict("Cannot login with Okta MFA password reset failing repeatedly")
 
         assert result.confidence > 0.3  # Should have decent confidence
         assert result.queue in router.labels

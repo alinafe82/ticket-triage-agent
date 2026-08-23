@@ -1,4 +1,5 @@
 """Tests for configuration module."""
+
 import json
 import logging
 
@@ -23,11 +24,7 @@ class TestSettings:
 
     def test_custom_settings(self):
         """Test custom settings values."""
-        settings = Settings(
-            environment="production",
-            llm_provider="openai",
-            port=9000
-        )
+        settings = Settings(environment="production", llm_provider="openai", port=9000)
 
         assert settings.environment == "production"
         assert settings.llm_provider == "openai"
