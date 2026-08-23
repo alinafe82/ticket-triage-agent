@@ -52,8 +52,15 @@ class Router:
                     details={"required": 2, "provided": len(training_data)}
                 )
 
+            if any(not text.strip() for text, _label in training_data):
+                raise RouterException("Training data contains blank text")
+            if any(not label.strip() for _text, label in training_data):
+                raise RouterException("Training data contains blank label")
+
             texts, labels = zip(*training_data, strict=False)
-            unique_labels = list(set(labels))
+            unique_labels = sorted(set(labels))
+            if len(unique_labels) < 2:
+                raise RouterException("Training data must contain at least two queues")
 
             logger.info(
                 f"Training router with {len(training_data)} examples "
