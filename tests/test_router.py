@@ -35,6 +35,30 @@ class TestRouter:
         assert "Queue-A" in router.labels
         assert "Queue-B" in router.labels
 
+    def test_bootstrap_returns_labels_in_stable_order(self):
+        training_data = [
+            ("First alpha example", "Queue-B"),
+            ("First beta example", "Queue-A"),
+            ("Second alpha example", "Queue-B"),
+            ("Second beta example", "Queue-A"),
+        ]
+
+        router = Router.bootstrap(training_data)
+
+        assert router.labels == ["Queue-A", "Queue-B"]
+
+    @pytest.mark.parametrize(
+        "training_data, message",
+        [
+            ([('Valid text', 'Queue-A'), ('   ', 'Queue-B')], "blank text"),
+            ([('First text', 'Queue-A'), ('Second text', '   ')], "blank label"),
+            ([('First text', 'Queue-A'), ('Second text', 'Queue-A')], "two queues"),
+        ],
+    )
+    def test_bootstrap_rejects_ambiguous_training_data(self, training_data, message):
+        with pytest.raises(RouterException, match=message):
+            Router.bootstrap(training_data)
+
     def test_bootstrap_insufficient_data(self):
         """Test router fails with insufficient training data."""
         training_data = [("Single ticket", "Queue-A")]
