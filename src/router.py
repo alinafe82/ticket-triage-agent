@@ -1,10 +1,11 @@
 """ML-based ticket routing using scikit-learn."""
 
 import logging
-import pickle
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import skops.io as sio
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -161,8 +162,10 @@ class Router:
             model_path = Path(path)
             model_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(model_path, "wb") as f:
-                pickle.dump(self, f)
+            sio.dump(
+                {"vectorizer": self.vec, "classifier": self.clf, "labels": self.labels},
+                model_path,
+            )
 
             logger.info(f"Router model saved to {path}")
 
@@ -175,8 +178,8 @@ class Router:
         """
         Load router model from disk.
 
-        Pickle can execute code during loading. Only load model files produced by this
-        service and stored in a trusted local path.
+        The skops format rejects unknown executable types by default, avoiding pickle's
+        arbitrary-code execution behavior.
 
         Args:
             path: File path to load model from.
@@ -196,11 +199,21 @@ class Router:
                     f"Model not found at {path}", details={"path": str(model_path.absolute())}
                 )
 
-            with open(model_path, "rb") as f:
-                router = pickle.load(f)
+            payload: Any = sio.load(model_path, trusted=[])
+            if not isinstance(payload, dict):
+                raise RouterException("Model file did not contain a router payload")
 
-            if not isinstance(router, cls):
-                raise RouterException("Model file did not contain a Router instance")
+            vectorizer = payload.get("vectorizer")
+            classifier = payload.get("classifier")
+            labels = payload.get("labels")
+            if not isinstance(vectorizer, TfidfVectorizer):
+                raise RouterException("Model file contained an invalid vectorizer")
+            if not isinstance(classifier, LogisticRegression):
+                raise RouterException("Model file contained an invalid classifier")
+            if not isinstance(labels, list) or not all(isinstance(label, str) for label in labels):
+                raise RouterException("Model file contained invalid labels")
+
+            router = cls(vectorizer, classifier, labels)
 
             logger.info(f"Router model loaded from {path}")
             return router

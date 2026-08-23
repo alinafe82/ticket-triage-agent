@@ -127,7 +127,7 @@ class TestRouter:
     def test_save_and_load_model(self):
         """Test saving and loading router model."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            model_path = Path(tmpdir) / "router.pkl"
+            model_path = Path(tmpdir) / "router.skops"
 
             # Train and save
             router = Router.bootstrap()
@@ -146,7 +146,7 @@ class TestRouter:
     def test_load_nonexistent_model(self):
         """Test loading non-existent model raises exception."""
         with pytest.raises(ModelNotTrainedException):
-            Router.load("/nonexistent/path/model.pkl")
+            Router.load("/nonexistent/path/model.skops")
 
     def test_confidence_values(self):
         """Test that confidence values are reasonable."""
