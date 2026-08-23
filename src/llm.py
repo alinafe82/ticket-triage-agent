@@ -64,10 +64,9 @@ class MockLLM(BaseLLM):
         # Extract queue from prompt if present
         queue = "the appropriate team"
         if "'" in prompt:
-            try:
-                queue = prompt.split("'")[1]
-            except IndexError:
-                pass
+            parts = prompt.split("'", maxsplit=2)
+            if len(parts) > 1:
+                queue = parts[1]
 
         return (
             f"Thank you for reaching out. I've routed your ticket to {queue}.\n\n"
