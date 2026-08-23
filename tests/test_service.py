@@ -20,7 +20,7 @@ class TestTriageService:
         """Test triaging a valid ticket."""
         result = triage_service.triage_ticket(
             summary="Cannot reset password",
-            description="User unable to reset password in Okta portal"
+            description="User unable to reset password in Okta portal",
         )
 
         assert isinstance(result, TriageResponse)
@@ -37,7 +37,7 @@ class TestTriageService:
         result = triage_service.triage_ticket(
             summary="VPN not working",
             description="Cannot connect to office VPN",
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         assert result.correlation_id == correlation_id
@@ -46,22 +46,19 @@ class TestTriageService:
         """Test triaging different types of tickets."""
         # IT-Helpdesk ticket
         result1 = triage_service.triage_ticket(
-            summary="Password reset",
-            description="Need to reset Okta password"
+            summary="Password reset", description="Need to reset Okta password"
         )
         assert result1.queue == "IT-Helpdesk"
 
         # IT-Procurement ticket
         result2 = triage_service.triage_ticket(
-            summary="Equipment request",
-            description="Need new laptop for development work"
+            summary="Equipment request", description="Need new laptop for development work"
         )
         assert result2.queue == "IT-Procurement"
 
         # Network ticket
         result3 = triage_service.triage_ticket(
-            summary="VPN issue",
-            description="VPN connection unstable on Mac"
+            summary="VPN issue", description="VPN connection unstable on Mac"
         )
         assert result3.queue == "Network"
 
@@ -77,17 +74,13 @@ class TestTriageService:
         """Test that confidence is always between 0 and 1."""
         for _ in range(10):
             result = triage_service.triage_ticket(
-                summary="Random ticket",
-                description="Some description"
+                summary="Random ticket", description="Some description"
             )
             assert 0.0 <= result.confidence <= 1.0
 
     def test_triage_all_queues_present(self, triage_service):
         """Test that all queues are included in results."""
-        result = triage_service.triage_ticket(
-            summary="Test",
-            description="Test ticket"
-        )
+        result = triage_service.triage_ticket(summary="Test", description="Test ticket")
 
         available_queues = triage_service.get_available_queues()
 

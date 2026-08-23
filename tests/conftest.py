@@ -1,4 +1,5 @@
 """Pytest fixtures and configuration."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,12 +13,7 @@ from src.service import TriageService
 @pytest.fixture
 def test_settings():
     """Create test settings."""
-    return Settings(
-        environment="test",
-        debug=True,
-        llm_provider="mock",
-        log_level="DEBUG"
-    )
+    return Settings(environment="test", debug=True, llm_provider="mock", log_level="DEBUG")
 
 
 @pytest.fixture

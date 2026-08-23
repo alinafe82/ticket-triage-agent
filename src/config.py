@@ -1,4 +1,5 @@
 """Application configuration management."""
+
 import json
 import logging
 from functools import lru_cache
@@ -16,7 +17,8 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"
+    # Containers must listen beyond loopback so the published port is reachable.
+    host: str = "0.0.0.0"  # nosec B104
     port: int = 8000
     workers: int = 1
 
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
     llm_max_retries: int = 3
 
     # ML Router
-    router_model_path: str = "models/router.pkl"
+    router_model_path: str = "models/router.skops"
     router_confidence_threshold: float = 0.5
 
     # Logging
@@ -46,9 +48,7 @@ class Settings(BaseSettings):
     enable_metrics: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
 

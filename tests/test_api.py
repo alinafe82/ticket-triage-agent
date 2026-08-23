@@ -1,4 +1,5 @@
 """Tests for FastAPI endpoints."""
+
 from fastapi import status
 
 from src import app as app_module
@@ -57,7 +58,7 @@ class TestTriageEndpoint:
         """Test triaging a valid ticket."""
         ticket = {
             "summary": "Cannot reset password",
-            "description": "User unable to reset password through Okta portal"
+            "description": "User unable to reset password through Okta portal",
         }
 
         response = client.post("/triage", json=ticket)
@@ -73,10 +74,7 @@ class TestTriageEndpoint:
 
     def test_triage_returns_correlation_id(self, client):
         """Test that triage returns correlation ID."""
-        ticket = {
-            "summary": "VPN issue",
-            "description": "VPN not connecting"
-        }
+        ticket = {"summary": "VPN issue", "description": "VPN not connecting"}
 
         response = client.post("/triage", json=ticket)
 
@@ -87,10 +85,7 @@ class TestTriageEndpoint:
 
     def test_triage_has_correlation_id_header(self, client):
         """Test that response includes correlation ID header."""
-        ticket = {
-            "summary": "Test",
-            "description": "Test description"
-        }
+        ticket = {"summary": "Test", "description": "Test description"}
 
         response = client.post("/triage", json=ticket)
 
@@ -102,25 +97,22 @@ class TestTriageEndpoint:
             {
                 "summary": "Password reset",
                 "description": "Need Okta password reset",
-                "expected_queue": "IT-Helpdesk"
+                "expected_queue": "IT-Helpdesk",
             },
             {
                 "summary": "Laptop request",
                 "description": "Need new MacBook Pro",
-                "expected_queue": "IT-Procurement"
+                "expected_queue": "IT-Procurement",
             },
             {
                 "summary": "VPN problem",
                 "description": "Cannot connect to VPN",
-                "expected_queue": "Network"
-            }
+                "expected_queue": "Network",
+            },
         ]
 
         for ticket_data in tickets:
-            ticket = {
-                "summary": ticket_data["summary"],
-                "description": ticket_data["description"]
-            }
+            ticket = {"summary": ticket_data["summary"], "description": ticket_data["description"]}
 
             response = client.post("/triage", json=ticket)
 
@@ -146,10 +138,7 @@ class TestTriageEndpoint:
 
     def test_triage_empty_summary(self, client):
         """Test triage fails with empty summary."""
-        ticket = {
-            "summary": "",
-            "description": "Some description"
-        }
+        ticket = {"summary": "", "description": "Some description"}
 
         response = client.post("/triage", json=ticket)
 
@@ -157,10 +146,7 @@ class TestTriageEndpoint:
 
     def test_triage_empty_description(self, client):
         """Test triage fails with empty description."""
-        ticket = {
-            "summary": "Some summary",
-            "description": ""
-        }
+        ticket = {"summary": "Some summary", "description": ""}
 
         response = client.post("/triage", json=ticket)
 
@@ -170,7 +156,7 @@ class TestTriageEndpoint:
         """Test triage fails with summary exceeding max length."""
         ticket = {
             "summary": "a" * 501,  # Max is 500
-            "description": "Some description"
+            "description": "Some description",
         }
 
         response = client.post("/triage", json=ticket)
@@ -181,7 +167,7 @@ class TestTriageEndpoint:
         """Test triage fails with description exceeding max length."""
         ticket = {
             "summary": "Some summary",
-            "description": "a" * 5001  # Max is 5000
+            "description": "a" * 5001,  # Max is 5000
         }
 
         response = client.post("/triage", json=ticket)
@@ -191,9 +177,7 @@ class TestTriageEndpoint:
     def test_triage_invalid_json(self, client):
         """Test triage fails with invalid JSON."""
         response = client.post(
-            "/triage",
-            content="invalid json",
-            headers={"Content-Type": "application/json"}
+            "/triage", content="invalid json", headers={"Content-Type": "application/json"}
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

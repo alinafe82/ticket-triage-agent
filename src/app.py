@@ -1,4 +1,5 @@
 """FastAPI application for ticket triage service."""
+
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -67,17 +68,12 @@ setup_cors(app, settings.cors_origins, allow_credentials=settings.cors_allow_cre
 # Request/Response Models
 class TicketRequest(BaseModel):
     """Request model for ticket triage."""
+
     summary: str = Field(
-        ...,
-        min_length=1,
-        max_length=500,
-        description="Brief summary of the issue"
+        ..., min_length=1, max_length=500, description="Brief summary of the issue"
     )
     description: str = Field(
-        ...,
-        min_length=1,
-        max_length=5000,
-        description="Detailed description of the issue"
+        ..., min_length=1, max_length=5000, description="Detailed description of the issue"
     )
 
     model_config = ConfigDict(
@@ -85,7 +81,7 @@ class TicketRequest(BaseModel):
             "example": {
                 "summary": "Cannot reset password",
                 "description": "User is unable to reset their password through the Okta portal. "
-                              "Error message: 'Invalid token'. Issue started this morning."
+                "Error message: 'Invalid token'. Issue started this morning.",
             }
         }
     )
@@ -93,19 +89,18 @@ class TicketRequest(BaseModel):
 
 class TriageResult(BaseModel):
     """Response model for ticket triage."""
+
     queue: str = Field(..., description="Assigned support queue")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Prediction confidence")
     needs_review: bool = Field(..., description="Whether the prediction is below review threshold")
     reply: str = Field(..., description="Generated response message")
-    all_queues: dict[str, float] = Field(
-        ...,
-        description="Confidence scores for all queues"
-    )
+    all_queues: dict[str, float] = Field(..., description="Confidence scores for all queues")
     correlation_id: str | None = Field(None, description="Request correlation ID")
 
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     version: str
     environment: str
@@ -113,6 +108,7 @@ class HealthResponse(BaseModel):
 
 class RootResponse(BaseModel):
     """Service metadata response."""
+
     service: str
     version: str
     environment: str
@@ -122,6 +118,7 @@ class RootResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     error: str
     detail: str | None = None
     correlation_id: str | None = None
@@ -146,10 +143,7 @@ async def triage_exception_handler(request: Request, exc: TriageServiceException
 
     logger.error(
         f"Triage error: {exc.message}",
-        extra={
-            "correlation_id": correlation_id,
-            "details": exc.details
-        }
+        extra={"correlation_id": correlation_id, "details": exc.details},
     )
 
     return JSONResponse(
@@ -157,8 +151,8 @@ async def triage_exception_handler(request: Request, exc: TriageServiceException
         content={
             "error": exc.message,
             "detail": str(exc.details) if exc.details else None,
-            "correlation_id": correlation_id
-        }
+            "correlation_id": correlation_id,
+        },
     )
 
 
@@ -168,11 +162,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     correlation_id = getattr(request.state, "correlation_id", None)
 
     logger.warning(
-        "Validation error",
-        extra={
-            "correlation_id": correlation_id,
-            "errors": exc.errors()
-        }
+        "Validation error", extra={"correlation_id": correlation_id, "errors": exc.errors()}
     )
 
     return JSONResponse(
@@ -180,8 +170,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "error": "Validation error",
             "detail": exc.errors(),
-            "correlation_id": correlation_id
-        }
+            "correlation_id": correlation_id,
+        },
     )
 
 
@@ -191,9 +181,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     correlation_id = getattr(request.state, "correlation_id", None)
 
     logger.error(
-        f"Unexpected error: {exc}",
-        extra={"correlation_id": correlation_id},
-        exc_info=True
+        f"Unexpected error: {exc}", extra={"correlation_id": correlation_id}, exc_info=True
     )
 
     return JSONResponse(
@@ -201,8 +189,8 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={
             "error": "Internal server error",
             "detail": str(exc) if settings.debug else None,
-            "correlation_id": correlation_id
-        }
+            "correlation_id": correlation_id,
+        },
     )
 
 
@@ -215,9 +203,7 @@ async def health_check() -> HealthResponse:
     Returns basic service status and version information.
     """
     return HealthResponse(
-        status="healthy",
-        version=settings.app_version,
-        environment=settings.environment
+        status="healthy", version=settings.app_version, environment=settings.environment
     )
 
 
@@ -230,14 +216,11 @@ async def readiness_check() -> HealthResponse:
     """
     if triage_service is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not initialized"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not initialized"
         )
 
     return HealthResponse(
-        status="ready",
-        version=settings.app_version,
-        environment=settings.environment
+        status="ready", version=settings.app_version, environment=settings.environment
     )
 
 
@@ -255,8 +238,7 @@ async def list_queues() -> list[str]:
     """
     if triage_service is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not initialized"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not initialized"
         )
 
     return triage_service.get_available_queues()
@@ -286,8 +268,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
     """
     if triage_service is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not initialized"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not initialized"
         )
 
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -298,14 +279,12 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
             "correlation_id": correlation_id,
             "summary_length": len(ticket.summary),
             "description_length": len(ticket.description),
-        }
+        },
     )
 
     try:
         result = triage_service.triage_ticket(
-            summary=ticket.summary,
-            description=ticket.description,
-            correlation_id=correlation_id
+            summary=ticket.summary, description=ticket.description, correlation_id=correlation_id
         )
 
         return TriageResult(
@@ -314,7 +293,7 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
             needs_review=result.needs_review,
             reply=result.reply,
             all_queues=result.all_queues,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
     except TriageServiceException:
@@ -325,13 +304,12 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
         logger.error(
             f"Unexpected error in triage: {e}",
             extra={"correlation_id": correlation_id},
-            exc_info=True
+            exc_info=True,
         )
         # Do not leak exception detail to the client. The correlation_id is
         # already logged above and lets an operator find the full stack.
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Triage failed"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Triage failed"
         ) from e
 
 

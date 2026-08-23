@@ -1,4 +1,5 @@
 """Business logic layer for ticket triage service."""
+
 import logging
 from dataclasses import dataclass
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TriageResponse:
     """Complete triage response with routing and reply."""
+
     queue: str
     confidence: float
     needs_review: bool
@@ -24,12 +26,7 @@ class TriageResponse:
 class TriageService:
     """Service for triaging tickets with ML routing and LLM responses."""
 
-    def __init__(
-        self,
-        router: Router,
-        llm: BaseLLM,
-        settings: Settings
-    ):
+    def __init__(self, router: Router, llm: BaseLLM, settings: Settings):
         """
         Initialize triage service.
 
@@ -59,6 +56,7 @@ class TriageService:
         """
         if settings is None:
             from .config import get_settings
+
             settings = get_settings()
 
         try:
@@ -74,15 +72,10 @@ class TriageService:
 
         except Exception as e:
             logger.error(f"Service initialization failed: {e}", exc_info=True)
-            raise TriageServiceException(
-                f"Failed to initialize service: {e}"
-            ) from e
+            raise TriageServiceException(f"Failed to initialize service: {e}") from e
 
     def triage_ticket(
-        self,
-        summary: str,
-        description: str,
-        correlation_id: str | None = None
+        self, summary: str, description: str, correlation_id: str | None = None
     ) -> TriageResponse:
         """
         Triage a ticket with ML routing and LLM response generation.
@@ -107,8 +100,8 @@ class TriageService:
                 extra={
                     "correlation_id": correlation_id,
                     "summary_length": len(summary),
-                    "description_length": len(description)
-                }
+                    "description_length": len(description),
+                },
             )
 
             # Route ticket
@@ -122,7 +115,7 @@ class TriageService:
                     "queue": routing_result.queue,
                     "confidence": routing_result.confidence,
                     "needs_review": needs_review,
-                }
+                },
             )
 
             # Generate LLM response
@@ -131,10 +124,7 @@ class TriageService:
 
             logger.info(
                 "LLM response generated",
-                extra={
-                    "correlation_id": correlation_id,
-                    "reply_length": len(reply)
-                }
+                extra={"correlation_id": correlation_id, "reply_length": len(reply)},
             )
 
             return TriageResponse(
@@ -143,14 +133,12 @@ class TriageService:
                 needs_review=needs_review,
                 reply=reply,
                 all_queues=routing_result.all_predictions,
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
             )
 
         except Exception as e:
             logger.error(
-                f"Triage failed: {e}",
-                extra={"correlation_id": correlation_id},
-                exc_info=True
+                f"Triage failed: {e}", extra={"correlation_id": correlation_id}, exc_info=True
             )
             raise TriageServiceException(f"Triage failed: {e}") from e
 

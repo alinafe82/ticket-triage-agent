@@ -1,9 +1,11 @@
 """ML-based ticket routing using scikit-learn."""
+
 import logging
-import pickle
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import skops.io as sio
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RoutingResult:
     """Result of ticket routing prediction."""
+
     queue: str
     confidence: float
     all_predictions: dict[str, float]
@@ -49,7 +52,7 @@ class Router:
             if len(training_data) < 2:
                 raise RouterException(
                     "Insufficient training data",
-                    details={"required": 2, "provided": len(training_data)}
+                    details={"required": 2, "provided": len(training_data)},
                 )
 
             if any(not text.strip() for text, _label in training_data):
@@ -71,11 +74,7 @@ class Router:
             vec = TfidfVectorizer(max_features=1000, ngram_range=(1, 2))
             X = vec.fit_transform(texts)
 
-            clf = LogisticRegression(
-                max_iter=200,
-                class_weight='balanced',
-                random_state=42
-            )
+            clf = LogisticRegression(max_iter=200, class_weight="balanced", random_state=42)
             clf.fit(X, labels)
 
             logger.info("Router training completed successfully")
@@ -131,8 +130,7 @@ class Router:
 
             # Get all predictions
             all_predictions = {
-                label: float(prob)
-                for label, prob in zip(self.clf.classes_, proba, strict=False)
+                label: float(prob) for label, prob in zip(self.clf.classes_, proba, strict=False)
             }
 
             # Get best prediction
@@ -140,15 +138,10 @@ class Router:
             best_label = self.clf.classes_[idx]
             best_confidence = float(proba[idx])
 
-            logger.debug(
-                f"Predicted queue: {best_label} "
-                f"(confidence: {best_confidence:.2%})"
-            )
+            logger.debug(f"Predicted queue: {best_label} (confidence: {best_confidence:.2%})")
 
             return RoutingResult(
-                queue=best_label,
-                confidence=best_confidence,
-                all_predictions=all_predictions
+                queue=best_label, confidence=best_confidence, all_predictions=all_predictions
             )
 
         except Exception as e:
@@ -169,8 +162,10 @@ class Router:
             model_path = Path(path)
             model_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(model_path, 'wb') as f:
-                pickle.dump(self, f)
+            sio.dump(
+                {"vectorizer": self.vec, "classifier": self.clf, "labels": self.labels},
+                model_path,
+            )
 
             logger.info(f"Router model saved to {path}")
 
@@ -183,8 +178,8 @@ class Router:
         """
         Load router model from disk.
 
-        Pickle can execute code during loading. Only load model files produced by this
-        service and stored in a trusted local path.
+        The skops format rejects unknown executable types by default, avoiding pickle's
+        arbitrary-code execution behavior.
 
         Args:
             path: File path to load model from.
@@ -201,15 +196,24 @@ class Router:
 
             if not model_path.exists():
                 raise ModelNotTrainedException(
-                    f"Model not found at {path}",
-                    details={"path": str(model_path.absolute())}
+                    f"Model not found at {path}", details={"path": str(model_path.absolute())}
                 )
 
-            with open(model_path, 'rb') as f:
-                router = pickle.load(f)
+            payload: Any = sio.load(model_path, trusted=[])
+            if not isinstance(payload, dict):
+                raise RouterException("Model file did not contain a router payload")
 
-            if not isinstance(router, cls):
-                raise RouterException("Model file did not contain a Router instance")
+            vectorizer = payload.get("vectorizer")
+            classifier = payload.get("classifier")
+            labels = payload.get("labels")
+            if not isinstance(vectorizer, TfidfVectorizer):
+                raise RouterException("Model file contained an invalid vectorizer")
+            if not isinstance(classifier, LogisticRegression):
+                raise RouterException("Model file contained an invalid classifier")
+            if not isinstance(labels, list) or not all(isinstance(label, str) for label in labels):
+                raise RouterException("Model file contained invalid labels")
+
+            router = cls(vectorizer, classifier, labels)
 
             logger.info(f"Router model loaded from {path}")
             return router

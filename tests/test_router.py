@@ -1,4 +1,5 @@
 """Tests for ML router module."""
+
 import tempfile
 from pathlib import Path
 
@@ -50,9 +51,9 @@ class TestRouter:
     @pytest.mark.parametrize(
         "training_data, message",
         [
-            ([('Valid text', 'Queue-A'), ('   ', 'Queue-B')], "blank text"),
-            ([('First text', 'Queue-A'), ('Second text', '   ')], "blank label"),
-            ([('First text', 'Queue-A'), ('Second text', 'Queue-A')], "two queues"),
+            ([("Valid text", "Queue-A"), ("   ", "Queue-B")], "blank text"),
+            ([("First text", "Queue-A"), ("Second text", "   ")], "blank label"),
+            ([("First text", "Queue-A"), ("Second text", "Queue-A")], "two queues"),
         ],
     )
     def test_bootstrap_rejects_ambiguous_training_data(self, training_data, message):
@@ -126,7 +127,7 @@ class TestRouter:
     def test_save_and_load_model(self):
         """Test saving and loading router model."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            model_path = Path(tmpdir) / "router.pkl"
+            model_path = Path(tmpdir) / "router.skops"
 
             # Train and save
             router = Router.bootstrap()
@@ -145,16 +146,14 @@ class TestRouter:
     def test_load_nonexistent_model(self):
         """Test loading non-existent model raises exception."""
         with pytest.raises(ModelNotTrainedException):
-            Router.load("/nonexistent/path/model.pkl")
+            Router.load("/nonexistent/path/model.skops")
 
     def test_confidence_values(self):
         """Test that confidence values are reasonable."""
         router = Router.bootstrap()
 
         # High confidence prediction
-        result = router.predict(
-            "Cannot login with Okta MFA password reset failing repeatedly"
-        )
+        result = router.predict("Cannot login with Okta MFA password reset failing repeatedly")
 
         assert result.confidence > 0.3  # Should have decent confidence
         assert result.queue in router.labels
