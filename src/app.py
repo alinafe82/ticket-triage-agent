@@ -93,7 +93,10 @@ class TriageResult(BaseModel):
     queue: str = Field(..., description="Assigned support queue")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Prediction confidence")
     needs_review: bool = Field(..., description="Whether the prediction is below review threshold")
-    reply: str = Field(..., description="Generated response message")
+    reply: str | None = Field(
+        ...,
+        description="Generated response message, or null when the optional LLM is unavailable",
+    )
     all_queues: dict[str, float] = Field(..., description="Confidence scores for all queues")
     correlation_id: str | None = Field(None, description="Request correlation ID")
 
@@ -254,8 +257,8 @@ async def triage_ticket(request: Request, ticket: TicketRequest) -> TriageResult
     """
     Triage a support ticket.
 
-    Routes the ticket to an appropriate queue using ML classification
-    and generates an empathetic response using LLM.
+    Routes the ticket to an appropriate queue using deterministic classification
+    and attempts to generate an empathetic response using the optional LLM.
 
     Args:
         ticket: Ticket with summary and description.
