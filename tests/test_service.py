@@ -1,7 +1,13 @@
 """Tests for service module."""
 
 from src.config import Settings
+from src.llm import BaseLLM
 from src.service import TriageResponse, TriageService
+
+
+class FailingLLM(BaseLLM):
+    def complete(self, prompt: str, max_tokens: int = 500) -> str:
+        raise RuntimeError("provider unavailable")
 
 
 class TestTriageService:
@@ -27,6 +33,7 @@ class TestTriageService:
         assert result.queue is not None
         assert 0.0 <= result.confidence <= 1.0
         assert isinstance(result.needs_review, bool)
+        assert result.reply is not None
         assert len(result.reply) > 0
         assert len(result.all_queues) > 0
 
@@ -98,3 +105,18 @@ class TestTriageService:
         )
 
         assert result.needs_review is True
+
+    def test_triage_returns_routing_when_optional_llm_fails(self, mock_router):
+        settings = Settings(llm_provider="mock")
+        service = TriageService(mock_router, FailingLLM(settings), settings)
+
+        result = service.triage_ticket(
+            summary="VPN not working",
+            description="Cannot connect after rotating my password",
+            correlation_id="degraded-123",
+        )
+
+        assert result.queue == "Network"
+        assert 0.0 <= result.confidence <= 1.0
+        assert result.reply is None
+        assert result.correlation_id == "degraded-123"

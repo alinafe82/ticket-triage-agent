@@ -18,7 +18,7 @@ class TriageResponse:
     queue: str
     confidence: float
     needs_review: bool
-    reply: str
+    reply: str | None
     all_queues: dict[str, float]
     correlation_id: str | None = None
 
@@ -118,14 +118,27 @@ class TriageService:
                 },
             )
 
-            # Generate LLM response
+            # Generate a best-effort LLM response. Routing is deterministic and
+            # remains useful when an optional provider is unavailable.
             prompt = self._create_prompt(routing_result.queue, summary, description)
-            reply = self.llm.complete(prompt)
-
-            logger.info(
-                "LLM response generated",
-                extra={"correlation_id": correlation_id, "reply_length": len(reply)},
-            )
+            reply: str | None = None
+            try:
+                reply = self.llm.complete(prompt)
+                logger.info(
+                    "LLM response generated",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "reply_length": len(reply),
+                    },
+                )
+            except Exception as exc:
+                logger.warning(
+                    "LLM response unavailable; returning routing result without a reply",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "error_type": type(exc).__name__,
+                    },
+                )
 
             return TriageResponse(
                 queue=routing_result.queue,

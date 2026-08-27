@@ -9,12 +9,12 @@ This repo is internal-platform tooling, not a chatbot. The point is to remove th
 1. Receive a ticket payload (summary + description).
 2. Run a deterministic router over the text. The router returns a queue and a confidence score in [0, 1].
 3. If `confidence < router_confidence_threshold` (default `0.5`, configurable in `src.config`), mark the response `needs_review` so a human handles it. The routing decision is still returned, but with the flag set.
-4. Call the LLM provider to generate a short summary of the ticket. This is currently in the request path: if the provider is configured and fails, the request returns 500. The mock provider is the default and never fails.
-5. Return queue, confidence, summary, `needs_review`, and a correlation ID.
+4. Ask the optional LLM provider for a short reply. If the provider fails, preserve the routing result and return `reply: null`.
+5. Return queue, confidence, reply, `needs_review`, and a correlation ID.
 
 Step 3 is the part that makes this useful in practice. Wrong-confidence-1.0 is what destroys trust in an automation tool. The threshold is a flat floor over the top-class confidence, not a margin between the top two classes.
 
-The LLM step is not currently optional in the same way the deterministic routing is. The right next change is to make it best-effort: the routing decision is returned regardless of provider failures, and the summary is null on failure. That belongs to a follow-up PR.
+The deterministic routing result is the durable part of the response. The LLM reply is best-effort and cannot turn a successful routing decision into a server error.
 
 ## Quickstart
 
@@ -58,7 +58,7 @@ Three reasons this repo leads with deterministic routing instead of an LLM call:
 - Latency. The deterministic path returns in single-digit milliseconds. An LLM call does not.
 - The cases where LLMs are wrong tend to be confidently wrong. The deterministic router is wrong too, but it knows when it is uncertain, which is what `needs_review` is built on.
 
-The LLM is still useful, just not for the routing decision itself. It is for the summary that a human reads before clicking "approve" or "reroute". The summary's failure mode is currently coupled to the response — see "What the service is actually doing" above.
+The LLM is still useful, just not for the routing decision itself. It drafts the reply that a human reads before clicking "approve" or "reroute"; when it is unavailable, the API returns the queue and review signal with `reply: null`.
 
 ## What the tests prove
 
@@ -67,6 +67,7 @@ The LLM is still useful, just not for the routing decision itself. It is for the
 - when API key auth is enabled, requests without the header are rejected.
 - when API key auth is disabled, requests are accepted without the header.
 - low-confidence predictions return `needs_review` instead of routing.
+- provider failures preserve the deterministic queue result and return a null reply.
 - the correlation ID survives across the request lifecycle and shows up in logs.
 - request validation errors return structured 4xx responses.
 - routing evaluation on local sample data exercises the queue predictions end-to-end.
